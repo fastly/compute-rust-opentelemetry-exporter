@@ -1,0 +1,15 @@
+# This file describes a Fastly Compute package. To learn more visit:
+# https://www.fastly.com/documentation/reference/compute/fastly-toml
+
+authors = ["ehodel@fastly.com"]
+cloned_from = "https://github.com/fastly/compute-starter-kit-rust-empty"
+description = "Example for the fastly-opentelemetry-exporter crate"
+language = "rust"
+manifest_version = 3
+name = "fastly-opentelemetry-exporter-example"
+service_id = ""
+
+[local_server]
+
+[scripts]
+build = "cargo build --profile release"
