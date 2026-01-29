@@ -4,7 +4,7 @@ use opentelemetry_semantic_conventions::{
     SCHEMA_URL,
     resource::{
         CLOUD_ACCOUNT_ID, CLOUD_AVAILABILITY_ZONE, CLOUD_PLATFORM, CLOUD_PROVIDER, CLOUD_REGION,
-        DEPLOYMENT_ENVIRONMENT_NAME, HOST_NAME, SERVICE_INSTANCE_ID, SERVICE_NAME, SERVICE_VERSION,
+        DEPLOYMENT_ENVIRONMENT_NAME, HOST_NAME, SERVICE_INSTANCE_ID, SERVICE_VERSION,
     },
 };
 
@@ -41,28 +41,26 @@ impl ResourceBuilder {
             .to_string()
         });
 
-        let service_name = self
-            .service_name
-            .unwrap_or_else(|| env!("CARGO_PKG_NAME").to_string());
+        let attributes = [
+            KeyValue::new(CLOUD_ACCOUNT_ID, value_from_env("FASTLY_CUSTOMER_ID")),
+            KeyValue::new(CLOUD_AVAILABILITY_ZONE, value_from_env("FASTLY_POP")),
+            KeyValue::new(CLOUD_PLATFORM, "Fastly Compute"),
+            KeyValue::new(CLOUD_PROVIDER, "Fastly"),
+            KeyValue::new(CLOUD_REGION, value_from_env("FASTLY_REGION")),
+            KeyValue::new(DEPLOYMENT_ENVIRONMENT_NAME, environment),
+            KeyValue::new(HOST_NAME, value_from_env("FASTLY_HOSTNAME")),
+            KeyValue::new(SERVICE_INSTANCE_ID, value_from_env("FASTLY_SERVICE_ID")),
+            KeyValue::new(SERVICE_VERSION, value_from_env("FASTLY_SERVICE_VERSION")),
+        ];
 
-        Resource::builder()
-            .with_service_name(service_name.clone())
-            .with_schema_url(
-                [
-                    KeyValue::new(CLOUD_ACCOUNT_ID, value_from_env("FASTLY_CUSTOMER_ID")),
-                    KeyValue::new(CLOUD_AVAILABILITY_ZONE, value_from_env("FASTLY_POP")),
-                    KeyValue::new(CLOUD_PLATFORM, "Fastly Compute"),
-                    KeyValue::new(CLOUD_PROVIDER, "Fastly"),
-                    KeyValue::new(CLOUD_REGION, value_from_env("FASTLY_REGION")),
-                    KeyValue::new(DEPLOYMENT_ENVIRONMENT_NAME, environment),
-                    KeyValue::new(HOST_NAME, value_from_env("FASTLY_HOSTNAME")),
-                    KeyValue::new(SERVICE_INSTANCE_ID, value_from_env("FASTLY_SERVICE_ID")),
-                    KeyValue::new(SERVICE_NAME, service_name),
-                    KeyValue::new(SERVICE_VERSION, value_from_env("FASTLY_SERVICE_VERSION")),
-                ],
-                SCHEMA_URL,
-            )
-            .build()
+        let builder = Resource::builder().with_schema_url(attributes, SCHEMA_URL);
+
+        if let Some(service_name) = self.service_name {
+            builder.with_service_name(service_name)
+        } else {
+            builder
+        }
+        .build()
     }
 
     /// Build a resource using the defaults
