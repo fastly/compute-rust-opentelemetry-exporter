@@ -5,7 +5,10 @@ use opentelemetry_proto::{
         common::tonic::ResourceAttributesWithSchema, logs::tonic::group_logs_by_resource_and_scope,
     },
 };
-use opentelemetry_sdk::error::{OTelSdkError, OTelSdkResult};
+use opentelemetry_sdk::{
+    Resource,
+    error::{OTelSdkError, OTelSdkResult},
+};
 
 use crate::{ExporterBuildError, log_exporter_builder::LogExporterBuilder};
 
@@ -46,5 +49,9 @@ impl opentelemetry_sdk::logs::LogExporter for LogExporter {
             .map_err(|error| OTelSdkError::InternalFailure(error.to_string()))?;
 
         Ok(())
+    }
+
+    fn set_resource(&mut self, resource: &Resource) {
+        self.resource = resource.into();
     }
 }
