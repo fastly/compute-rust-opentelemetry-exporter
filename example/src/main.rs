@@ -1,7 +1,9 @@
 use fastly::{http::StatusCode, Backend, Error, Request, Response};
 use fastly_opentelemetry_exporter::*;
 use opentelemetry::trace::TracerProvider;
+use opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge;
 use opentelemetry_sdk::{
+    logs::{SdkLogger, SdkLoggerProvider},
     propagation::TraceContextPropagator,
     trace::{Sampler, SdkTracerProvider, Tracer},
 };
@@ -11,7 +13,7 @@ use tracing_subscriber::{layer::SubscriberExt, Registry};
 
 #[fastly::main]
 fn main(req: Request) -> Result<Response, Error> {
-    let tracing_backend = Backend::from_name("otel-http")?;
+    let tracing_backend = Backend::from_name("OTEL-home")?;
     let tracing = Tracing::new(tracing_backend)?;
     tracing.init();
 
@@ -28,6 +30,7 @@ fn main(req: Request) -> Result<Response, Error> {
 }
 
 struct Tracing {
+    logger: SdkLoggerProvider,
     tracer: SdkTracerProvider,
 }
 
@@ -35,24 +38,39 @@ impl Tracing {
     fn new(backend: Backend) -> Result<Self, ExporterBuildError> {
         opentelemetry::global::set_text_map_propagator(TraceContextPropagator::new());
 
-        let exporter = SpanExporterBuilder::new(backend)?.build()?;
+        let log_exporter = LogExporterBuilder::new(backend.clone())?.build()?;
 
-        let tracer = SdkTracerProvider::builder()
-            .with_resource(ResourceBuilder::build_default())
-            .with_sampler(Sampler::AlwaysOn)
-            .with_simple_exporter(exporter)
+        let resource = ResourceBuilder::build_default();
+
+        let logger = SdkLoggerProvider::builder()
+            .with_resource(resource.clone())
+            .with_simple_exporter(log_exporter)
             .build();
 
-        Ok(Self { tracer })
+        let span_exporter = SpanExporterBuilder::new(backend)?.build()?;
+
+        let tracer = SdkTracerProvider::builder()
+            .with_resource(resource)
+            .with_sampler(Sampler::AlwaysOn)
+            .with_simple_exporter(span_exporter)
+            .build();
+
+        Ok(Self { logger, tracer })
     }
 
     fn init(&self) {
-        let subscriber = tracing_subscriber::registry().with(self.layer());
+        let subscriber = tracing_subscriber::registry()
+            .with(self.tracer_layer())
+            .with(self.logger_layer());
 
         tracing::subscriber::set_global_default(subscriber).unwrap();
     }
 
-    fn layer(&self) -> OpenTelemetryLayer<Registry, Tracer> {
+    fn logger_layer(&self) -> OpenTelemetryTracingBridge<SdkLoggerProvider, SdkLogger> {
+        OpenTelemetryTracingBridge::new(&self.logger)
+    }
+
+    fn tracer_layer(&self) -> OpenTelemetryLayer<Registry, Tracer> {
         OpenTelemetryLayer::new(self.tracer.tracer(env!("CARGO_PKG_NAME")))
             .with_tracked_inactivity(false)
             .with_threads(false)
@@ -62,7 +80,11 @@ impl Tracing {
 impl Drop for Tracing {
     fn drop(&mut self) {
         if let Err(e) = self.tracer.shutdown() {
-            println!("shutdown failed: {e}");
+            println!("tracer shutdown failed: {e}");
+        }
+
+        if let Err(e) = self.logger.shutdown() {
+            println!("logger shutdown failed: {e}");
         }
     }
 }
