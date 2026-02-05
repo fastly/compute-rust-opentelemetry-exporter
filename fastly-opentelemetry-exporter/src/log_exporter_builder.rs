@@ -1,10 +1,14 @@
-use fastly::{Backend, http::Url};
+use fastly::{
+    Backend,
+    http::{HeaderName, HeaderValue, Url},
+};
 use opentelemetry_proto::transform::common::tonic::ResourceAttributesWithSchema;
 
 use crate::{DefaultUrl, ExporterBuildError, LogExporter};
 
 pub struct LogExporterBuilder {
     backend: Backend,
+    headers: Vec<(HeaderName, HeaderValue)>,
     resource: Option<ResourceAttributesWithSchema>,
     url: Option<Url>,
 }
@@ -21,6 +25,7 @@ impl LogExporterBuilder {
 
         Ok(Self {
             backend,
+            headers: Default::default(),
             resource: None,
             url: None,
         })
@@ -28,15 +33,25 @@ impl LogExporterBuilder {
 
     /// Build the log exporter
     pub fn build(self) -> Result<LogExporter, ExporterBuildError> {
-        let backend = self.backend;
+        let Self {
+            backend,
+            headers,
+            resource,
+            url,
+        } = self;
 
-        let resource = self.resource.unwrap_or_default();
+        let resource = resource.unwrap_or_default();
 
-        let url = self
-            .url
-            .map_or_else(|| DefaultUrl::Logs.to_url(&backend), Ok)?;
+        let url = url.map_or_else(|| DefaultUrl::Logs.to_url(&backend), Ok)?;
 
-        Ok(LogExporter::new(backend, resource, url))
+        Ok(LogExporter::new(backend, headers, resource, url))
+    }
+
+    /// Add a header
+    pub fn with_header(mut self, name: HeaderName, value: HeaderValue) -> Self {
+        self.headers.push((name, value));
+
+        self
     }
 
     /// Override the exporter resource

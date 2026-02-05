@@ -1,4 +1,7 @@
-use fastly::{Backend, Request, http::Url};
+use fastly::{
+    Backend, Request,
+    http::{HeaderName, HeaderValue, Url},
+};
 use opentelemetry_proto::{
     tonic::collector::logs::v1::ExportLogsServiceRequest,
     transform::{
@@ -16,15 +19,22 @@ use crate::{ExporterBuildError, log_exporter_builder::LogExporterBuilder};
 #[derive(Debug)]
 pub struct LogExporter {
     backend: Backend,
+    headers: Vec<(HeaderName, HeaderValue)>,
     resource: ResourceAttributesWithSchema,
     url: Url,
 }
 
 impl LogExporter {
     /// Create a new LogExporter
-    pub fn new(backend: Backend, resource: ResourceAttributesWithSchema, url: Url) -> Self {
+    pub fn new(
+        backend: Backend,
+        headers: Vec<(HeaderName, HeaderValue)>,
+        resource: ResourceAttributesWithSchema,
+        url: Url,
+    ) -> Self {
         Self {
             backend,
+            headers,
             resource,
             url,
         }
@@ -42,9 +52,15 @@ impl opentelemetry_sdk::logs::LogExporter for LogExporter {
 
         let export_request = ExportLogsServiceRequest { resource_logs };
 
-        Request::post(&self.url)
+        let mut request = Request::post(&self.url)
             .with_body_json(&export_request)
-            .map_err(|error| OTelSdkError::InternalFailure(error.to_string()))?
+            .map_err(|error| OTelSdkError::InternalFailure(error.to_string()))?;
+
+        for (name, value) in &self.headers {
+            request.append_header(name, value);
+        }
+
+        request
             .send_async(&self.backend)
             .map_err(|error| OTelSdkError::InternalFailure(error.to_string()))?;
 
