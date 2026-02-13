@@ -7,6 +7,7 @@ use crate::ExporterBuildError;
 #[derive(Clone, Copy)]
 pub(crate) enum DefaultUrl {
     Logs,
+    Metrics,
     Traces,
 }
 
@@ -16,6 +17,7 @@ impl DefaultUrl {
 
         let path = match self {
             DefaultUrl::Logs => "/v1/logs",
+            DefaultUrl::Metrics => "/v1/metrics",
             DefaultUrl::Traces => "/v1/traces",
         };
 
