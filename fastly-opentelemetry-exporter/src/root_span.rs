@@ -28,6 +28,6 @@ pub fn update_span_for_request(span: &Span, req: &Request) -> String {
         propagator.extract(&HeaderExtractor(req))
     });
 
-    span.set_parent(cx);
+    let _ = span.set_parent(cx); // it's possible for this to fail if the span has already started, but we can ignore that since it just means the trace context won't be propagated
     span.context().span().span_context().trace_id().to_string()
 }
