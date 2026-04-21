@@ -1,5 +1,10 @@
 [package]
 name = "fastly-opentelemetry-exporter"
+description = "OpenTelemetry span exporter for Fastly Compute"
+license = "MIT"
+keywords = ["opentelemetry", "fastly", "tracing", "observability"]
+categories = ["development-tools::debugging", "web-programming"]
+readme = "../README.md"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true

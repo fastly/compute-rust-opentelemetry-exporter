@@ -5,6 +5,10 @@ use opentelemetry_proto::transform::common::tonic::ResourceAttributesWithSchema;
 
 use crate::{ExporterBuildError, SpanExporter};
 
+/// Builder for configuring a [`SpanExporter`].
+///
+/// This builder allows you to customize the backend, URL, and resource attributes
+/// for the span exporter before building it.
 pub struct SpanExporterBuilder {
     backend: Backend,
     resource: Option<ResourceAttributesWithSchema>,

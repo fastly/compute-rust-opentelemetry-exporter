@@ -1,3 +1,5 @@
+#![doc = include_str!("../../README.md")]
+
 mod error;
 mod resource_builder;
 mod root_span;
