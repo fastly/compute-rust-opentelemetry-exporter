@@ -1,4 +1,4 @@
-use fastly::{http::StatusCode, Backend, Error, Request, Response};
+use fastly::{Backend, Error, Request, Response, http::StatusCode};
 use fastly_opentelemetry_exporter::*;
 use opentelemetry::trace::TracerProvider;
 use opentelemetry_sdk::{
@@ -7,7 +7,7 @@ use opentelemetry_sdk::{
 };
 use tracing::info;
 use tracing_opentelemetry::OpenTelemetryLayer;
-use tracing_subscriber::{layer::SubscriberExt, Registry};
+use tracing_subscriber::{Registry, layer::SubscriberExt};
 
 #[fastly::main]
 fn main(req: Request) -> Result<Response, Error> {

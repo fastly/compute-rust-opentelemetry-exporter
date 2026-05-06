@@ -2,21 +2,14 @@
 name = "fastly-opentelemetry-tracing-example"
 version = "0.1.0"
 authors = []
-edition = "2021"
-# Remove this line if you want to be able to publish this crate on crates.io.
-# Otherwise, `publish = false` prevents an accidental `cargo publish` from revealing private source.
+edition = "2024"
 publish = false
 
-[profile.release]
-debug = 1
-codegen-units = 1
-lto = "fat"
-
 [dependencies]
-fastly = "0.11.0"
+fastly.workspace = true
 fastly-opentelemetry-exporter = { path = "../fastly-opentelemetry-exporter/" }
 opentelemetry.workspace = true
 opentelemetry_sdk.workspace = true
-tracing-subscriber = "0.3.19"
+tracing-subscriber = "0.3.23"
 tracing.workspace = true
 tracing-opentelemetry.workspace = true
