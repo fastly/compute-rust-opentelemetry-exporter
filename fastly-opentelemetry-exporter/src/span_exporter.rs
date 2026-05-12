@@ -1,6 +1,8 @@
+use std::collections::HashMap;
+
 use fastly::{
     Backend, Request,
-    http::{Method, Url, header::CONTENT_TYPE},
+    http::{HeaderName, HeaderValue, Method, Url},
 };
 use opentelemetry_proto::{
     tonic::collector::trace::v1::ExportTraceServiceRequest,
@@ -21,15 +23,22 @@ use crate::{ExporterBuildError, SpanExporterBuilder};
 #[derive(Debug)]
 pub struct SpanExporter {
     backend: Backend,
+    headers: HashMap<HeaderName, Vec<HeaderValue>>,
     resource: ResourceAttributesWithSchema,
     url: Url,
 }
 
 impl SpanExporter {
     /// Create a new SpanExporter
-    pub fn new(backend: Backend, resource: ResourceAttributesWithSchema, url: Url) -> Self {
+    pub fn new(
+        backend: Backend,
+        resource: ResourceAttributesWithSchema,
+        url: Url,
+        headers: HashMap<HeaderName, Vec<HeaderValue>>,
+    ) -> Self {
         Self {
             backend,
+            headers,
             resource,
             url,
         }
@@ -63,17 +72,27 @@ impl opentelemetry_sdk::trace::SpanExporter for SpanExporter {
         };
 
         let backend = self.backend.clone();
+        let headers = self.headers.clone();
         let url = self.url.clone();
 
-        Box::pin(std::future::ready(send_spans(json, backend, url)))
+        Box::pin(std::future::ready(send_spans(backend, url, headers, json)))
     }
 }
 
-fn send_spans(json: String, backend: Backend, url: Url) -> OTelSdkResult {
-    let result = Request::new(Method::POST, url)
-        .with_header(CONTENT_TYPE, "application/json")
-        .with_body(json)
-        .send_async(backend);
+fn send_spans(
+    backend: Backend,
+    url: Url,
+    headers: HashMap<HeaderName, Vec<HeaderValue>>,
+    json: String,
+) -> OTelSdkResult {
+    let mut request = Request::new(Method::POST, url);
+    for (name, values) in headers.iter() {
+        for value in values {
+            request.append_header(name, value);
+        }
+    }
+
+    let result = request.with_body(json).send_async(backend);
 
     match result {
         Ok(_) => OTelSdkResult::Ok(()),
